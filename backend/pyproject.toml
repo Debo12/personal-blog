@@ -1,0 +1,82 @@
+[tool.poetry]
+name = "fastapi-blog"
+version = "0.1.0"
+description = "Backend API for FastAPI Blog"
+authors = ["Debo"]
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.14"
+
+# Web Framework
+fastapi = "^0.116.1"
+uvicorn = { extras = ["standard"], version = "^0.35.0" }
+
+# Database
+sqlalchemy = "^2.0.41"
+asyncpg = "^0.30.0"
+alembic = "^1.16.4"
+
+# Configuration
+pydantic-settings = "^2.10.1"
+python-dotenv = "^1.1.1"
+
+# Authentication
+python-jose = { extras = ["cryptography"], version = "^3.5.0" }
+pwdlib = { extras = ["argon2"], version = "^0.2.1" }
+python-multipart = "^0.0.20"
+email-validator = "^2.2.0"
+
+# Cache
+redis = "^6.2.0"
+
+# HTTP Client
+httpx = "^0.28.1"
+
+# Logging
+structlog = "^25.4.0"
+
+[virtualenvs]
+in-project = true
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.4.1"
+pytest-asyncio = "^1.1.0"
+pytest-cov = "^6.2.1"
+
+ruff = "^0.12.3"
+mypy = "^1.17.0"
+pre-commit = "^4.2.0"
+
+ipython = "^9.4.0"
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "F",
+    "I",
+    "UP",
+    "B",
+    "SIM",
+]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.mypy]
+python_version = "3.14"
+strict = true
+ignore_missing_imports = true
+
+[build-system]
+requires = ["poetry-core>=2.0.0"]
+build-backend = "poetry.core.masonry.api"
