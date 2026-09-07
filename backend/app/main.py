@@ -5,9 +5,12 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from app.schemas import PostCreate, PostResponse
+
 app = FastAPI()
 
-app.mount(path="/static", app=StaticFiles(directory="app/static"), name="static")
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
 templates = Jinja2Templates(directory="app/templates")
 
 posts: list[dict] = [
@@ -27,59 +30,86 @@ posts: list[dict] = [
     },
 ]
 
-@app.get("/", include_in_schema=False)
-@app.get("/posts",include_in_schema=False)
+
+@app.get("/", include_in_schema=False, name="home")
+@app.get("/posts", include_in_schema=False, name="posts")
 def home(request: Request):
     return templates.TemplateResponse(
-        request=request,
-        name="home.html",
-        context={"posts": posts, "title": "Home"}
+        request,
+        "home.html",
+        {"posts": posts, "title": "Home"},
     )
 
-@app.get("/posts/{post_id}", include_in_schema=False)
-def post(request: Request, post_id: int):
-    for post in posts:
-            if post["id"] == post_id:
-                return templates.TemplateResponse(
-                            request=request,
-                            name="post.html",
-                            context={"post": post}
-                )
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="post not found")
 
-@app.get("/api/posts")
-def get_all_posts():
+@app.get("/posts/{post_id}", include_in_schema=False)
+def post_page(request: Request, post_id: int):
+    for post in posts:
+        if post.get("id") == post_id:
+            title = post["title"][:50]
+            return templates.TemplateResponse(
+                request,
+                "post.html",
+                {"post": post, "title": title},
+            )
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
+
+
+@app.get("/api/posts", response_model=list[PostResponse])
+def get_posts():
     return posts
 
-@app.get("/api/post/{post_id}")
-def get_post_by_id(post_id: int):
+
+@app.post(
+    "/api/posts",
+    response_model=PostResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_post(post: PostCreate):
+    new_id = max(p["id"] for p in posts) + 1 if posts else 1
+    new_post = {
+        "id": new_id,
+        "author": post.author,
+        "title": post.title,
+        "content": post.content,
+        "date_posted": "April 23, 2025",
+    }
+    posts.append(new_post)
+    return new_post
+
+
+@app.get("/api/posts/{post_id}", response_model=PostResponse)
+def get_post(post_id: int):
     for post in posts:
-        if post["id"] == post_id:
+        if post.get("id") == post_id:
             return post
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="post not found")
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
+
 
 @app.exception_handler(StarletteHTTPException)
-def general_http_exception_handler(request: Request, execption: StarletteHTTPException):
-     message = (execption.detail 
-                if execption.detail 
-                else "An error occurred. Please check your request and try again.")
+def general_http_exception_handler(request: Request, exception: StarletteHTTPException):
+    message = (
+        exception.detail
+        if exception.detail
+        else "An error occurred. Please check your request and try again."
+    )
 
-     if request.url.path.startswith("/api"):
-          return JSONResponse(
-               status_code=execption.status_code,
-               content={"detail": message}
-          )
-     else:
-          return templates.TemplateResponse(
-               request=request,
-               status_code=execption.status_code,
-               name="error.html",
-               context={
-                    "message": message,
-                    "title": execption.status_code,
-                    "status_code": execption.status_code
-               }
-          )
+    if request.url.path.startswith("/api"):
+        return JSONResponse(
+            status_code=exception.status_code,
+            content={"detail": message},
+        )
+
+    return templates.TemplateResponse(
+        request,
+        "error.html",
+        {
+            "status_code": exception.status_code,
+            "title": exception.status_code,
+            "message": message,
+        },
+        status_code=exception.status_code,
+    )
+
 
 @app.exception_handler(RequestValidationError)
 def validation_exception_handler(request: Request, exception: RequestValidationError):
